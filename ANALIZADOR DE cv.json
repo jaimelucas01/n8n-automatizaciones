@@ -1,0 +1,495 @@
+{
+  "name": "ANALIZADOR DE cv",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=CV",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        112
+      ],
+      "id": "441ee267-1d43-4b9f-b2a3-bda0b8e6f0dd",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        112
+      ],
+      "id": "99f5f07f-1a81-4f69-9bef-707ac6c41b91",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Candidato: {{ $json.output.text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Eres un experto en recursos humanos y necesitas evaluar si el candidato se alinea con el perfil que la empresa está buscando. Debes asignar una puntuación del 1 al 10, donde 1 significa que el candidato no cumple en absoluto con los requisitos, y 10 indica que es el candidato ideal porque encaja perfectamente con el perfil deseado. Además, en el campo de \"consideración\", explica por qué asignaste esa puntuación.  Perfil buscado: Gerente Comercial Senior  Se requiere profesional con formación en Negocios, Administración o Comercio Internacional y al menos 10 años de experiencia en gestión comercial, desarrollo de mercados y liderazgo de equipos de ventas. Debe contar con excelente comunicación en español e inglés, dominio avanzado de herramientas CRM y fuerte orientación a resultados con historial comprobado de crecimiento de ingresos. Competencias clave:  Liderazgo de equipos comerciales Desarrollo y ejecución de estrategias de ventas Gestión de cuentas estratégicas Resolución de conflictos Visión de negocio y determinación Negociación de contratos de alto valor  Requisitos adicionales:  Experiencia en expansión a mercados internacionales Conocimiento de metodologías de venta consultiva Disponibilidad para viajes nacionales e internacionales Residencia en Ciudad de México o área metropolitana"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1376,
+        112
+      ],
+      "id": "0bf163f5-5f1c-48bb-9402-55c3a03b153e",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "=Nombre",
+              "description": "Nombre"
+            },
+            {
+              "name": "Email",
+              "description": "Email"
+            },
+            {
+              "name": "Direccion",
+              "description": "Direccion"
+            },
+            {
+              "name": "Telefono",
+              "description": "Telefono"
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Eres un algoritmo experto en extracción.  \nExtrae únicamente la información relevante del texto.  \nSi no conoces el valor de algún atributo solicitado, puedes omitir dicho valor."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        -144
+      ],
+      "id": "4f0052b0-bcb2-4d09-99b1-6fedf1ced03c",
+      "name": "datosPersonales"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "Resumen academico",
+              "description": "resumen de de la formacion academica, concentrate en la parte universitaria y cursos, maximo de 100 palabras\n",
+              "required": true
+            },
+            {
+              "name": "historial laboral",
+              "description": "resumen de su actividad laboral, maximo de 100 palabras",
+              "required": true
+            },
+            {
+              "name": "Habilidades",
+              "description": "resumen de sus habilidades adquiridas ya se por su estudio o por su experiencia laboral, max imo de 100 palabras",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Eres un algoritmo experto en extracción.  \nExtrae únicamente la información relevante del texto.  \nSi no conoces el valor de algún atributo solicitado, puedes omitir dicho valor."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        256
+      ],
+      "id": "72ed3eb1-2e89-412a-8413-ffd794ea3423",
+      "name": "habilidades"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        448
+      ],
+      "id": "30b74868-950f-4b22-81a2-f1d47dad47d2",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "asiUPU5cxFSqPUQu",
+          "name": "OpenAi account 7"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Curriculum Vitae",
+        "formDescription": "Por favor envía tu cv",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "CV",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        112
+      ],
+      "id": "f4830204-8d5b-4641-9d74-46e792587e7e",
+      "name": "On form submission",
+      "webhookId": "a80caca0-e3bf-4c67-8009-3711ed4c2833"
+    },
+    {
+      "parameters": {
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "combineMapPrompt": "=Escribe un resumen conciso de lo siguiente:\n\nNombre: {{ $json.output.Nombre }}\nUbicación: {{ $json.output.Direccion }}\nFormación:{{ $json.output['Resumen academico'] }}\nExperiencia: {{ $json.output['historial laboral'] }}\nHabilidades: {{ $json.output.Habilidades }}\n\nInstrucción: Usa 100 palabras o menos. Sé conciso y conversacional. Enfócate en el valor profesional del candidato.\n\n\"Actúa como un reclutador senior y destaca por qué este perfil es interesante o en qué área brilla más.\"",
+              "prompt": "=Escribe un resumen conciso de lo siguiente:\n\nNombre: {{ $json.output.Nombre }}\nUbicación: {{ $json.output.Direccion }}\nFormación:{{ $json.output['Resumen academico'] }}\nExperiencia: {{ $json.output['historial laboral'] }}\nHabilidades: {{ $json.output.Habilidades }}\n\nInstrucción: Usa 100 palabras o menos. Sé conciso y conversacional. Enfócate en el valor profesional del candidato.\n\n\"Actúa como un reclutador senior y destaca por qué este perfil es interesante o en qué área brilla más.\""
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        1024,
+        112
+      ],
+      "id": "30b9aa58-4755-40bc-b661-8d9c48bdf82c",
+      "name": "resumen"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"calificacion\": \"9\",\n\t\"opinion\": \"Mariana Torres destaca como una candidata sobresaliente para la posición de Gerente Comercial Senior. Aporta más de 15 años de experiencia en liderazgo comercial, incluyendo la dirección de equipos multidisciplinarios en entornos altamente competitivos. Su historial incluye la apertura y consolidación de mercados en Centroamérica y el Caribe, así como la gestión exitosa de cuentas clave en sectores retail y B2B. Mariana posee una sólida formación en Administración y Comercio Internacional, y evidencia una clara orientación estratégica, con enfoque en rentabilidad, desarrollo de negocio y fidelización de clientes.\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        336
+      ],
+      "id": "eed9a0a6-ff0a-411f-8287-312a8fdf32a3",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1PFeR4o95owhsJ--qf5aVnYzRqaCtpYV9v7e0GM29LyY",
+          "mode": "list",
+          "cachedResultName": "base de datos 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PFeR4o95owhsJ--qf5aVnYzRqaCtpYV9v7e0GM29LyY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PFeR4o95owhsJ--qf5aVnYzRqaCtpYV9v7e0GM29LyY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre": "={{ $('datosPersonales').item.json.output.Nombre }}",
+            "Email": "={{ $('Merge').item.json.output.Email }}",
+            "Telefono": "={{ $('datosPersonales').item.json.output.Telefono }}",
+            "direccion ": "={{ $('datosPersonales').item.json.output.Direccion }}",
+            "habilidades": "={{ $('Merge').item.json.output.Habilidades }}",
+            "exp laboral": "={{ $('habilidades').item.json.output['historial laboral'] }}",
+            "estudios": "={{ $('habilidades').item.json.output['Resumen academico'] }}",
+            "nota para el puesto": "={{ $json.output.calificacion }}",
+            "opinion": "={{ $json.output.opinion }}"
+          },
+          "matchingColumns": [
+            "Nombre"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "direccion ",
+              "displayName": "direccion ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "habilidades",
+              "displayName": "habilidades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "exp laboral",
+              "displayName": "exp laboral",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estudios",
+              "displayName": "estudios",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nota para el puesto",
+              "displayName": "nota para el puesto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opinion",
+              "displayName": "opinion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        112
+      ],
+      "id": "3bad5cc0-36a8-4f2e-95ef-90ea4946dadf",
+      "name": "Append or update row in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "datosPersonales",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "habilidades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "datosPersonales": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "habilidades": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "datosPersonales",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "habilidades",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "resumen",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "resumen": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0b736949-1aaa-4329-bc32-b1a06d6efe6a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9075fbafdabd143c2e06a920b12119013f7dfebca02c8861781fa109e759a9fa"
+  },
+  "id": "HGWd4nqU8x1ik0CK",
+  "tags": []
+}

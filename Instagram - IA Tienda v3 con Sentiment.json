@@ -1,0 +1,491 @@
+{
+  "name": "Instagram - IA Tienda v3 con Sentiment",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "instagram-webhook",
+        "options": {}
+      },
+      "id": "1c077751-83c1-4b41-9d6b-af4cc3b8e8ad",
+      "name": "Instagram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -4144,
+        -48
+      ],
+      "webhookId": "9c83c6ed-bfb6-4255-8659-e3b28e2cea29"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nlet mensajes = [];\n\nif (body && body.entry) {\n  for (const entry of body.entry) {\n    if (entry.messaging) {\n      for (const msg of entry.messaging) {\n        if (msg.message && msg.message.text) {\n          mensajes.push({\n            tipo: 'DM',\n            senderId: msg.sender.id,\n            texto: msg.message.text,\n            timestamp: msg.timestamp,\n            messageId: msg.message.mid\n          });\n        }\n      }\n    }\n    if (entry.changes) {\n      for (const change of entry.changes) {\n        if (change.field === 'comments' && change.value && change.value.text) {\n          mensajes.push({\n            tipo: 'COMENTARIO',\n            senderId: change.value.from ? change.value.from.id : '',\n            senderName: change.value.from ? change.value.from.name : 'Usuario',\n            texto: change.value.text,\n            timestamp: change.value.timestamp,\n            commentId: change.value.id,\n            mediaId: change.value.media ? change.value.media.id : ''\n          });\n        }\n      }\n    }\n  }\n}\n\nif (mensajes.length === 0) {\n  return [{ json: { skip: true } }];\n}\n\nreturn mensajes.map(function(m) { return { json: m }; });"
+      },
+      "id": "23a28afe-389b-4c4e-9952-9ce668041161",
+      "name": "Extraer Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -3904,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.skip }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "42510dc4-537f-4afa-a5c2-7e125db7ab57",
+      "name": "Tiene mensaje",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3680,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "text",
+              "value": "={{ $json.texto }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ea0c2f67-5e15-4b73-b563-4146cee030d5",
+      "name": "Preparar Texto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -3456,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.texto }}",
+        "options": {}
+      },
+      "id": "99d8de22-2546-4174-b3d7-eaf310549c1d",
+      "name": "Sentiment Analysis",
+      "type": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+      "typeVersion": 1.1,
+      "position": [
+        -3280,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "a28d811d-9378-4548-a1b4-390b58c39a6d",
+      "name": "OpenAI LLM Sentiment",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3328,
+        208
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "oD7R8dHX0NHd7fLZ",
+          "name": "OpenAi account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.texto }}",
+        "options": {
+          "systemMessage": "Sos el agente de atencion al cliente de una tienda en Instagram. El cliente tiene una consulta general (puede ser sobre precios, stock, estado de pedido, envios, formas de pago, o info general).\n\nInformacion de la tienda (COMPLETAR CON TUS DATOS REALES):\n- Metodos de pago: tarjeta de credito/debito, transferencia bancaria, efectivo.\n- Envios: a todo el pais. Empresa de logistica: COMPLETAR. Tiempo estimado: COMPLETAR dias habiles.\n- Retiro por local: COMPLETAR (si/no, y direccion si aplica).\n- Horario de atencion: COMPLETAR.\n- Para precios y stock: los precios actualizados estan en la bio y en las historias destacadas. Pedir que especifique el producto para confirmar stock.\n- Para estado de pedido: pedir el numero de orden que recibio por email de confirmacion.\n- Politica de cambios y devoluciones: COMPLETAR.\n- Como comprar: escribir por DM indicando el producto de interes.\n\nTu tarea: identificar que necesita el cliente segun su mensaje y responder con la informacion mas relevante de forma clara y util.\n\nReglas:\n- Maximo 4 oraciones.\n- Tono amigable, calido e informal.\n- Espanol rioplatense (vos, te, etc).\n- Maximo 2 emojis.\n- Nunca menciones que sos una IA ni un bot.\n- Si la consulta es muy especifica y no tenes la info, decile que lo vas a chequear y responder a la brevedad."
+        }
+      },
+      "id": "2d75b1a1-bc98-4547-a2dc-515e5cae976b",
+      "name": "AI Agent General",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2976,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "54d06d33-b4a4-4265-b644-b3ed9d622b74",
+      "name": "OpenAI LLM General",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2960,
+        -64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "oD7R8dHX0NHd7fLZ",
+          "name": "OpenAi account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"model\": \"gpt-4o-mini\",\n  \"temperature\": 0,\n  \"max_tokens\": 15,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Clasificá este mensaje negativo de un cliente de tienda. Respondé SOLO una de estas palabras, nada mas:\\nAGRESIVO - contiene insultos, amenazas, groserías o lenguaje violento.\\nRECLAMO - queja, disconformidad o critica sin agresion.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ $json.texto }}\"\n    }\n  ]\n}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "2db58abe-d41d-444e-8023-2b5d55e3b22c",
+      "name": "Clasificar Agresivo vs Reclamo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -2976,
+        160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "P1jB2cPeLTPcRAbu",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResp = $input.first().json;\nconst raw = (aiResp.choices && aiResp.choices[0] && aiResp.choices[0].message)\n  ? aiResp.choices[0].message.content.trim().toUpperCase()\n  : 'RECLAMO';\n\nconst clasificacion = raw === 'AGRESIVO' ? 'AGRESIVO' : 'RECLAMO';\nconst origen = $('Preparar Texto').first().json;\n\nreturn [{\n  json: {\n    tipo: origen.tipo,\n    senderId: origen.senderId,\n    texto: origen.texto,\n    clasificacion: clasificacion,\n    procesadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "acca8074-446b-45f4-8a07-79a827acec6d",
+      "name": "Procesar Clasificacion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -2752,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.clasificacion }}",
+              "value2": "AGRESIVO"
+            }
+          ]
+        }
+      },
+      "id": "07c097b9-9e8c-4470-87dc-6be4d7bcbbeb",
+      "name": "IF Agresivo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2544,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "hello.kivoo@gmail.com",
+        "toEmail": "hello.kivoo@gmail.com",
+        "subject": "=URGENTE - Mensaje agresivo en Instagram ",
+        "text": "=Mensaje AGRESIVO recibido en Instagram. Requiere atencion humana inmediata.\n\nTipo: {{ $json.tipo }}\nSender ID: {{ $json.senderId }}\nFecha: {{ $json.procesadoEn }}\n\nMensaje del cliente:\n\"{{ $json.texto }}\"\n\nPor favor responde directamente desde Instagram a la brevedad.",
+        "options": {}
+      },
+      "id": "30fd1d42-7843-44f9-97e2-efc0f0449294",
+      "name": "Email Alerta Agresivo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        16
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "XDIna04p1ZdqIhRt",
+          "name": "SMTP account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.texto }}",
+        "options": {
+          "systemMessage": "Sos el agente de atencion al cliente de una tienda en Instagram. El cliente tiene un RECLAMO o QUEJA.\n\nTu tarea: responder con empatia genuina, validar su experiencia y malestar, pedirle disculpas por lo sucedido, y avisarle que un integrante humano del equipo lo va a contactar a la brevedad para resolver el problema personalmente.\n\nReglas:\n- Tono calido, empatico y profesional. Nunca robotico ni frio.\n- Maximo 3 oraciones.\n- Espanol rioplatense (vos, te, etc).\n- No prometas resoluciones especificas que no podes garantizar (como reembolsos inmediatos o plazos fijos).\n- Maximo 1 emoji.\n- Nunca menciones que sos una IA ni un bot.\n- Mostra que entendiste el problema especifico que menciona el cliente."
+        }
+      },
+      "id": "31d8c1d9-d917-48f6-bcec-e0557333035c",
+      "name": "AI Agent Reclamo",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2336,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "1eb6cb54-1f67-454e-a7c8-aa3d19ec858f",
+      "name": "OpenAI LLM Reclamo",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2368,
+        512
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "oD7R8dHX0NHd7fLZ",
+          "name": "OpenAi account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst respuesta = item.output || item.text || 'Gracias por escribirnos! Te respondemos a la brevedad.';\nconst origen = $('Preparar Texto').first().json;\n\nreturn [{\n  json: {\n    senderId: origen.senderId,\n    respuesta: respuesta,\n    tipo: origen.tipo\n  }\n}];"
+      },
+      "id": "84afe4f0-265d-402b-b160-f3c69a2f8cb2",
+      "name": "Extraer Respuesta Agente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -2736,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v19.0/me/messages?access_token=IGAA7odvH39cxBZAGF2WU1saFFaUEhuZAU9uU0hwcmM5ZA2RRSDhkRGhIb3BWbGlSUktWNVVWS2phWWpFa3JKT2pTRnRsel9XSVVBSmM0cy1KSkN3TzFrZAGhTV1BXS05rODBIWVo0eXNOWWFGZAXBJUTFEUm5BVHZArNlI4OVNDQ0l1NAZDZD",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"recipient\": { \"id\": \"{{ $json.senderId }}\" },\n  \"message\": { \"text\": \"{{ $json.respuesta }}\" }\n}",
+        "options": {}
+      },
+      "id": "bbb4e45e-7eb1-424b-a082-5596600b599e",
+      "name": "Enviar a Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -2496,
+        -96
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Instagram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extraer Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Tiene mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tiene mensaje": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Preparar Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Texto": {
+      "main": [
+        [
+          {
+            "node": "Sentiment Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentiment Analysis": {
+      "main": [
+        [
+          {
+            "node": "AI Agent General",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent General",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar Agresivo vs Reclamo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI LLM Sentiment": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sentiment Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent General": {
+      "main": [
+        [
+          {
+            "node": "Extraer Respuesta Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI LLM General": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent General",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar Agresivo vs Reclamo": {
+      "main": [
+        [
+          {
+            "node": "Procesar Clasificacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Clasificacion": {
+      "main": [
+        [
+          {
+            "node": "IF Agresivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Agresivo": {
+      "main": [
+        [
+          {
+            "node": "Email Alerta Agresivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent Reclamo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Reclamo": {
+      "main": [
+        [
+          {
+            "node": "Extraer Respuesta Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI LLM Reclamo": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Reclamo",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Respuesta Agente": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "dbab22da-bf65-4c4e-a60b-587d19132a85",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9075fbafdabd143c2e06a920b12119013f7dfebca02c8861781fa109e759a9fa"
+  },
+  "id": "eOGGF3euBmEyFVZ6",
+  "tags": []
+}

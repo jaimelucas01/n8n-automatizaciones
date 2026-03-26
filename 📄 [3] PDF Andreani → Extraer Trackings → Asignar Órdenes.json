@@ -1,0 +1,1631 @@
+{
+  "name": "📄 [3] PDF Andreani → Extraer Trackings → Asignar Órdenes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-6"
+            }
+          ]
+        }
+      },
+      "id": "383bea22-21df-4e61-8382-8905ad349220",
+      "name": "⏰ Trigger 7AM (Lun–Sáb)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1488,
+        -64
+      ],
+      "notes": "Podés duplicar este trigger para una segunda ejecución a las 12:00 hs. CRON: 0 7 * * 1-6 = 7AM de lunes a sábado. Para 7AM y 12PM: usá dos triggers separados o cambiá a '0 7,12 * * 1-6'"
+    },
+    {
+      "parameters": {
+        "url": "https://api.tiendanube.com/v1/TU_STORE_ID_TIENDANUBE/orders",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "payment_status",
+              "value": "paid"
+            },
+            {
+              "name": "shipping_status",
+              "value": "unpacked"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authentication",
+              "value": "bearer TU_ACCESS_TOKEN_TIENDANUBE"
+            },
+            {
+              "name": "User-Agent",
+              "value": "N8N-AndreaniBot (tunegocio@gmail.com)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6a250594-f80f-4dfa-9dba-81c3a26d8558",
+      "name": "📦 GET Pedidos Tienda Nube",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1280,
+        -256
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "url": "https://TU-TIENDA-WOOCOMMERCE.com/wp-json/wc/v3/orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "processing"
+            },
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bca0d490-20e2-4ee6-9e00-aa7398dadc2c",
+      "name": "🛒 GET Pedidos WooCommerce",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1280,
+        160
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst orders = Array.isArray(raw) ? raw : [raw];\nreturn orders.map(o => ({ json: { ...o, _platform: 'tiendanube' } }));"
+      },
+      "id": "2412ef6a-883b-4577-b28c-2198354e1cbb",
+      "name": "🏷️ Etiquetar TN",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        -272
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst orders = raw.orders || (Array.isArray(raw) ? raw : [raw]);\nreturn orders.map(o => ({ json: { ...o, _platform: 'shopify' } }));"
+      },
+      "id": "6e4fb276-2455-4aef-8e97-12b38b04b91c",
+      "name": "🏷️ Etiquetar Shopify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst orders = Array.isArray(raw) ? raw : [raw];\nreturn orders.map(o => ({ json: { ...o, _platform: 'woocommerce' } }));"
+      },
+      "id": "ce4b4d68-5192-41b5-934a-453954ef5add",
+      "name": "🏷️ Etiquetar WooCommerce",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        144
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "id": "83b4afde-1e7b-430a-9f88-349862dea72f",
+      "name": "🔀 Merge 3 Plataformas",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        -832,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst normalized =;\n\n// Mapa de conversión de provincias a códigos ISO (Requerido por Envia.com)\nconst provinceMap = {\n    \"capital federal\": \"AR-C\", \"caba\": \"AR-C\", \"buenos aires\": \"AR-B\", \"catamarca\": \"AR-K\",\n    \"chaco\": \"AR-H\", \"chubut\": \"AR-U\", \"córdoba\": \"AR-X\", \"cordoba\": \"AR-X\",\n    \"corrientes\": \"AR-W\", \"entre ríos\": \"AR-E\", \"entre rios\": \"AR-E\", \"formosa\": \"AR-P\",\n    \"jujuy\": \"AR-Y\", \"la pampa\": \"AR-L\", \"la rioja\": \"AR-F\", \"mendoza\": \"AR-M\",\n    \"misiones\": \"AR-N\", \"neuquén\": \"AR-Q\", \"neuquen\": \"AR-Q\", \"río negro\": \"AR-R\",\n    \"rio negro\": \"AR-R\", \"salta\": \"AR-A\", \"san juan\": \"AR-J\", \"san luis\": \"AR-D\",\n    \"santa cruz\": \"AR-Z\", \"santa fe\": \"AR-S\", \"santiago del estero\": \"AR-G\",\n    \"tierra del fuego\": \"AR-V\", \"tucumán\": \"AR-T\", \"tucuman\": \"AR-T\"\n};\n\nfunction getIsoCode(province) {\n    if (!province) return \"AR-C\";\n    let p = province.toLowerCase().trim();\n    // Si ya es un código ISO (empieza con AR-), lo dejamos como está\n    if (p.startsWith(\"ar-\")) return province.toUpperCase();\n    return provinceMap[p] |\n\n| \"AR-C\"; // Si no lo encuentra, por defecto CABA\n}\n\nfor (const item of items) {\n    const d = item.json;\n    let out = {};\n\n    if (d._platform === 'shopify') {\n        out = {\n            platform: 'shopify',\n            order_id: String(d.id),\n            order_number: String(d.order_number |\n\n| d.name |\n| d.id),\n            customer_email: d.email |\n\n| '',\n            customer_name: `${d.customer?.first_name |\n\n| ''} ${d.customer?.last_name |\n| ''}`.trim(),\n            customer_phone: (d.shipping_address?.phone |\n\n| d.customer?.phone |\n| '1100000000').replace(/[^0-9]/g, ''),\n            shipping_street: d.shipping_address?.address1 |\n\n| '',\n            shipping_number: 'S/N',\n            shipping_city: d.shipping_address?.city |\n\n| '',\n            shipping_province: getIsoCode(d.shipping_address?.province_code |\n\n| d.shipping_address?.province),\n            shipping_zipcode: d.shipping_address?.zip |\n\n| '',\n            order_total: parseFloat(d.total_price) |\n\n| 1000,\n        };\n    } else if (d._platform === 'woocommerce') {\n        const shipping = d.shipping |\n\n| {};\n        out = {\n            platform: 'woocommerce',\n            order_id: String(d.id),\n            order_number: String(d.number |\n\n| d.id),\n            customer_email: d.billing?.email |\n\n| '',\n            customer_name: `${d.billing?.first_name |\n\n| ''} ${d.billing?.last_name |\n| ''}`.trim(),\n            customer_phone: (d.billing?.phone |\n\n| '1100000000').replace(/[^0-9]/g, ''),\n            shipping_street: shipping.address_1 |\n\n| '',\n            shipping_number: shipping.address_2 |\n\n| 'S/N',\n            shipping_city: shipping.city |\n\n| '',\n            shipping_province: getIsoCode(shipping.state |\n\n| d.billing?.state),\n            shipping_zipcode: shipping.postcode |\n\n| '',\n            order_total: parseFloat(d.total) |\n\n| 1000,\n        };\n    } else {\n        // Tienda Nube\n        out = {\n            platform: 'tiendanube',\n            order_id: String(d.id),\n            order_number: String(d.number |\n\n| d.id),\n            customer_email: d.contact_email |\n\n| '',\n            customer_name: d.contact_name |\n\n| '',\n            customer_phone: (d.shipping_address?.phone |\n\n| d.contact_phone |\n| '1100000000').replace(/[^0-9]/g, ''),\n            shipping_street: d.shipping_address?.address |\n\n| '',\n            shipping_number: d.shipping_address?.number |\n\n| 'S/N',\n            shipping_city: d.shipping_address?.city |\n\n| '',\n            shipping_province: getIsoCode(d.shipping_address?.province),\n            shipping_zipcode: d.shipping_address?.zipcode |\n\n| '',\n            order_total: parseFloat(d.total) |\n\n| 1000,\n        };\n    }\n    normalized.push({ json: out });\n}\n\nreturn normalized;"
+      },
+      "id": "016bbfa7-53b4-4a42-86ba-e5d8cbfb7ff3",
+      "name": "⚙️ Normalizar Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1r48Qk_AvVx18K0bVeXlpTpLIDFOGZHfyDfRNQrQCv08",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "5c4ce8b5-8273-4b43-aac0-fc82b23d283a",
+      "name": "📊 Sheets: Leer IDs Procesados",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -416,
+        -48
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sheetsRows = $('📊 Sheets: Leer IDs Procesados').all();\nconst processedIds = new Set(\n  sheetsRows.map(r => r.json.order_id).filter(id => id && id !== 'order_id')\n);\nconst allOrders = $('⚙️ Normalizar Datos').all();\nconst newOrders = allOrders.filter(item => !processedIds.has(item.json.order_id));\n\nif (newOrders.length === 0) {\n  return [{ json: { _nada_que_procesar: true } }];\n}\nreturn newOrders;\n// Código de TEST — reemplazar por el original al terminar\n//return $input.all();"
+      },
+      "id": "45cd6ccf-b04b-4a12-828b-be59a72b1142",
+      "name": "🔍 Filtrar Duplicados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-nada",
+              "leftValue": "={{ $json._nada_que_procesar ?? false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "980a42b3-3519-4ce1-9a9d-7f1a8b68c29a",
+      "name": "🚦 ¿Hay pedidos nuevos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -64
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3e12568d-0a4c-40d2-9f6e-39b178613d6a",
+      "name": "✋ Sin Pedidos Nuevos",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://apis.andreani.com/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"userName\": \"hola.orbee@gmail.com\",\n  \"password\": \"ENVIOSorbee-2025\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "75411a89-3a00-4c02-bbad-e4d00b8fe3e9",
+      "name": "🔐 Login Andreani",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -96,
+        -832
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://apis.andreani.com/v2/ordenes-de-envio",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-authorization-token",
+              "value": "={{ $('🔐 Login Andreani').item.json.headers['x-authorization-token'] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contrato\": \"TU_NUMERO_CONTRATO_ANDREANI\",\n  \"remitente\": {\n    \"codigoCliente\": \"TU_CODIGO_CLIENTE_ANDREANI\"\n  },\n  \"destinatario\": {\n    \"apellido\": \"{{ $json.customer_lastname }}\",\n    \"nombre\": \"{{ $json.customer_firstname }}\",\n    \"email\": \"{{ $json.customer_email }}\",\n    \"documentoTipo\": \"DNI\",\n    \"documentoNumero\": \"00000000\",\n    \"telefonoNumero\": \"{{ $json.customer_phone.slice(-8) }}\",\n    \"telefonoAreaCodigo\": \"{{ $json.customer_phone.length > 8 ? $json.customer_phone.slice(-11, -8) : '11' }}\"\n  },\n  \"domicilioDestino\": {\n    \"calle\": \"{{ $json.shipping_street }}\",\n    \"numero\": \"{{ $json.shipping_number }}\",\n    \"localidad\": \"{{ $json.shipping_city }}\",\n    \"codigoPostal\": \"{{ $json.shipping_zipcode }}\",\n    \"provincia\": \"{{ $json.shipping_province }}\"\n  },\n  \"bultos\": [\n    {\n      \"kilos\": \"1\",\n      \"largoCm\": 30,\n      \"anchoCm\": 20,\n      \"altoCm\": 15,\n      \"valorDeclarado\": {{ $json.order_total }},\n      \"descripcion\": \"Pedido #{{ $json.order_number }} [{{ $json.platform }}]\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "be2167a2-4377-439c-80cc-23fc8dcc97a1",
+      "name": "📬 Crear Envío Andreani",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "a3dd4530-4e02-4dc6-9e19-4476f3824822",
+      "name": "⏳ Esperar 3s (rate limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        -64
+      ],
+      "webhookId": "fcf7071a-704e-4321-80f1-4843ae249aa3",
+      "notes": "Andreani tiene límite de peticiones por segundo. Este nodo espera 3 segundos entre cada creación de envío para no ser bloqueado. Si tenés muchos pedidos (30+) y los bloqueos persisten, aumentá a 5 segundos."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cok1",
+              "leftValue": "={{ $('📬 Crear Envío Andreani').item.json.envios !== undefined || $('📬 Crear Envío Andreani').item.json.numeroEnvio !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7c666fc9-cb73-4423-8cdd-f938f87ab4fa",
+      "name": "✅ ¿Andreani OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ok1",
+              "name": "tracking_number",
+              "value": "={{ $('📬 Crear Envío Andreani').item.json.envios?.[0]?.numeroEnvio || $('📬 Crear Envío Andreani').item.json.numeroEnvio || $('📬 Crear Envío Andreani').item.json[0]?.numeroEnvio || 'REVISAR' }}",
+              "type": "string"
+            },
+            {
+              "id": "ok2",
+              "name": "platform",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "ok3",
+              "name": "order_id",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ok4",
+              "name": "order_number",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.order_number }}",
+              "type": "string"
+            },
+            {
+              "id": "ok5",
+              "name": "customer_email",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "ok6",
+              "name": "customer_name",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "ok7",
+              "name": "fecha_despacho",
+              "value": "={{ new Date().toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d20972c5-d7c8-4abf-9ab0-a5f43e128b0f",
+      "name": "📝 Preparar Datos Éxito",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1r48Qk_AvVx18K0bVeXlpTpLIDFOGZHfyDfRNQrQCv08",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_id": "={{ $json.order_id }}",
+            "platform": "={{ $json.platform }}",
+            "order_number": "={{ $json.order_number }}",
+            "customer_email": "={{ $json.customer_email }}",
+            "tracking_number": "={{ $json.tracking_number }}",
+            "fecha_despacho": "={{ $json.fecha_despacho }}",
+            "estado": "CARGADO_SIN_TRACKING"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tracking_number",
+              "displayName": "tracking_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_despacho",
+              "displayName": "fecha_despacho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_detalle",
+              "displayName": "error_detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "36992810-d48a-4819-9476-6671ddfb7752",
+      "name": "📊 Sheets: Registrar Éxito",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        -192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "notes": "Estado 'CARGADO_SIN_TRACKING': el envío se creó en Andreani pero el tracking real llega recién cuando el Workflow 3 (PDF) procesa las etiquetas pagadas."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err1",
+              "name": "platform",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "err2",
+              "name": "order_id",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "err3",
+              "name": "order_number",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.order_number }}",
+              "type": "string"
+            },
+            {
+              "id": "err4",
+              "name": "customer_email",
+              "value": "={{ $('🔍 Filtrar Duplicados').item.json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "err5",
+              "name": "error_detalle",
+              "value": "={{ JSON.stringify($('📬 Crear Envío Andreani').item.json) }}",
+              "type": "string"
+            },
+            {
+              "id": "err6",
+              "name": "fecha_error",
+              "value": "={{ new Date().toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e456dad-0bfe-4552-90e0-aa5f68d128ca",
+      "name": "❌ Preparar Datos Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1r48Qk_AvVx18K0bVeXlpTpLIDFOGZHfyDfRNQrQCv08",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_id": "={{ $json.order_id }}",
+            "platform": "={{ $json.platform }}",
+            "order_number": "={{ $json.order_number }}",
+            "customer_email": "={{ $json.customer_email }}",
+            "tracking_number": "SIN_TRACKING",
+            "fecha_despacho": "={{ $json.fecha_error }}",
+            "estado": "ERROR",
+            "error_detalle": "={{ $json.error_detalle }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tracking_number",
+              "displayName": "tracking_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_despacho",
+              "displayName": "fecha_despacho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_detalle",
+              "displayName": "error_detalle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7fba2ed9-004c-4951-bc32-3dd0b47fbb66",
+      "name": "📊 Sheets: Registrar Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "jaimelucas2001@gmail.com",
+        "toEmail": "jaimelucas2001@gmail.com",
+        "subject": "=⚠️ ERROR al crear envío — Pedido #{{ $json.order_number }} ({{ $json.platform }})",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:600px\">\n  <div style=\"background:#e74c3c;padding:20px;border-radius:10px 10px 0 0;text-align:center\">\n    <h2 style=\"color:#fff;margin:0\">⚠️ Error en automatización Andreani</h2>\n  </div>\n  <div style=\"background:#f8f9fa;padding:25px;border-radius:0 0 10px 10px;border:1px solid #e9ecef\">\n    <table style=\"width:100%;border-collapse:collapse\">\n      <tr><td style=\"padding:8px;border:1px solid #dee2e6\"><b>Plataforma</b></td><td style=\"padding:8px;border:1px solid #dee2e6\">{{ $json.platform }}</td></tr>\n      <tr><td style=\"padding:8px;border:1px solid #dee2e6\"><b>Pedido #</b></td><td style=\"padding:8px;border:1px solid #dee2e6\">{{ $json.order_number }}</td></tr>\n      <tr><td style=\"padding:8px;border:1px solid #dee2e6\"><b>Order ID</b></td><td style=\"padding:8px;border:1px solid #dee2e6\">{{ $json.order_id }}</td></tr>\n      <tr><td style=\"padding:8px;border:1px solid #dee2e6\"><b>Cliente</b></td><td style=\"padding:8px;border:1px solid #dee2e6\">{{ $json.customer_email }}</td></tr>\n      <tr><td style=\"padding:8px;border:1px solid #dee2e6\"><b>Fecha</b></td><td style=\"padding:8px;border:1px solid #dee2e6\">{{ $json.fecha_error }}</td></tr>\n    </table>\n    <div style=\"background:#fdecea;border:1px solid #e74c3c;border-radius:6px;padding:12px;margin:15px 0\">\n      <b>Detalle:</b><br><code style=\"font-size:11px\">{{ $json.error_detalle }}</code>\n    </div>\n    <p style=\"color:#e74c3c\"><b>Acción:</b> Cargá este pedido manualmente en Andreani.</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "bdcbe99c-e911-4ab1-b5ef-db4f4ac56d2a",
+      "name": "📧 Notificar Error al Dueño",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1376,
+        80
+      ],
+      "webhookId": "106a35cd-43a8-45bd-bdf2-2d08269ccc0e",
+      "credentials": {
+        "smtp": {
+          "id": "XDIna04p1ZdqIhRt",
+          "name": "SMTP account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "andreani-pdf-upload",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "e1fa7ca8-a421-4a65-abe0-f6b0d2681405",
+      "name": "📥 Webhook: Recibir PDF",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        848
+      ],
+      "webhookId": "andreani-pdf-upload",
+      "notes": "Este nodo genera una URL tipo: https://TU-N8N.com/webhook/andreani-pdf-upload\nDesde esa URL podés subir el PDF con un formulario HTML (incluido más abajo en la guía).\nEl PDF se recibe como archivo binario en el body de la request."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar que llegó un archivo PDF\nconst binaryData = $input.first().binary;\nif (!binaryData || Object.keys(binaryData).length === 0) {\n  throw new Error('No se recibió ningún archivo. Subí el PDF de etiquetas de Andreani.');\n}\n\n// Tomar el primer archivo binario que llegue\nconst fileKey = Object.keys(binaryData)[0];\nconst file = binaryData[fileKey];\n\nif (!file.mimeType || !file.mimeType.includes('pdf')) {\n  throw new Error('El archivo no es un PDF. Asegurate de subir el PDF de etiquetas de Andreani.');\n}\n\nreturn [{ json: { fileKey, fileName: file.fileName, mimeType: file.mimeType }, binary: binaryData }];"
+      },
+      "id": "698dac86-a17a-447b-a7e8-d2f611ad915a",
+      "name": "🔍 Validar PDF recibido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ $json.fileKey }}",
+        "options": {}
+      },
+      "id": "03fafe7a-34db-4620-9f7a-5ecc4ee26b36",
+      "name": "📖 Extraer texto del PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        848
+      ],
+      "notes": "Este nodo extrae todo el texto del PDF. Las etiquetas de Andreani contienen los números de seguimiento en el texto. El resultado es el texto completo del PDF en $json.text"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// EXTRAER NÚMEROS DE SEGUIMIENTO DEL PDF DE ANDREANI\n// ============================================================\n// Las etiquetas de Andreani contienen:\n// - Número de envío (tracking): empieza con '1' y tiene 14-16 dígitos\n//   Ejemplo: 10000123456789\n// - Número interno (referencia al pedido): puede ser el order_number\n//   que pusiste al crear el envío. Lo busca en el campo 'descripcion'\n//\n// IMPORTANTE: Si los números de seguimiento de tu cuenta Andreani\n// tienen un formato diferente, ajustá la regex en la línea marcada.\n// ============================================================\n\nconst text = $input.first().json.text || '';\n\n// Regex para capturar números de seguimiento de Andreani\n// Formato habitual: comienza con 10 ó 1E seguido de dígitos, total 14-16 chars\n// ⚠️ AJUSTÁ ESTA REGEX si tus trackings tienen otro formato:\nconst trackingRegex = /\\b(1[0-9E]{13,15})\\b/g;\n\n// Regex para capturar número de pedido (lo que pusiste como 'descripcion' al crear el envío)\n// El formato del workflow de carga es: \"Pedido #NUMERO_PEDIDO [plataforma]\"\nconst orderRegex = /Pedido\\s*#(\\d+)/gi;\n\n// Dividir el PDF en bloques por etiqueta\n// Las etiquetas de Andreani suelen separarse por ciertos patrones de texto\n// Intentamos dividir por 'N° de envío' o 'Número de envío' o similares\nlet blocks = text.split(/(?=N[°o]?\\.?\\s*(?:de\\s*)?env[ií]o)/gi);\nif (blocks.length <= 1) {\n  // Si no encuentra el patrón, intentar dividir por doble salto de línea + tracking\n  blocks = text.split(/(?=\\b1[0-9E]{13,15}\\b)/);\n}\nif (blocks.length <= 1) {\n  blocks = [text]; // Usar todo el texto como un bloque si no puede dividir\n}\n\nconst trackings = [];\n\nfor (const block of blocks) {\n  const trackingMatches = [...block.matchAll(trackingRegex)];\n  const orderMatches = [...block.matchAll(orderRegex)];\n  \n  if (trackingMatches.length > 0) {\n    const trackingNumber = trackingMatches[0][1];\n    const orderNumber = orderMatches.length > 0 ? orderMatches[0][1] : null;\n    \n    // Evitar duplicados\n    if (!trackings.find(t => t.tracking_number === trackingNumber)) {\n      trackings.push({\n        tracking_number: trackingNumber,\n        order_number: orderNumber,\n        raw_block: block.substring(0, 200) // primeros 200 chars para debug\n      });\n    }\n  }\n}\n\nif (trackings.length === 0) {\n  throw new Error(`No se encontraron números de seguimiento en el PDF. Verificá que el PDF sea de etiquetas de Andreani. Texto extraído (primeros 500 chars): ${text.substring(0, 500)}`);\n}\n\nconsole.log(`✅ Se encontraron ${trackings.length} números de seguimiento en el PDF`);\nreturn trackings.map(t => ({ json: t }));"
+      },
+      "id": "f58c9a8a-6541-4f29-91bf-b83abb7e8b52",
+      "name": "🔢 Parsear Trackings del PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEETS_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "fd5d97ff-bd19-4637-8fae-11871ae66dc8",
+      "name": "📊 Sheets: Buscar Pedido por N°",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        -384,
+        848
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// CRUZAR TRACKING CON PEDIDO EN EL GOOGLE SHEET\n// ============================================================\n// Tomamos los trackings extraídos del PDF y los cruzamos con\n// los datos del Sheet para obtener order_id, platform, email.\n// ============================================================\n\nconst sheetsRows = $('📊 Sheets: Buscar Pedido por N°').all();\nconst trackingItems = $input.all();\nconst results = [];\n\nfor (const item of trackingItems) {\n  const { tracking_number, order_number } = item.json;\n  \n  // Buscar en el Sheet la fila correspondiente\n  let matchedRow = null;\n  \n  if (order_number) {\n    // Buscar por número de orden (más confiable)\n    matchedRow = sheetsRows.find(r => \n      String(r.json.order_number) === String(order_number)\n    );\n  }\n  \n  if (!matchedRow) {\n    // Si no encontró por order_number, buscar por estado CARGADO_SIN_TRACKING\n    // y tomar el más reciente (puede ser impreciso si hay muchos)\n    const pending = sheetsRows.filter(r => r.json.estado === 'CARGADO_SIN_TRACKING');\n    if (pending.length > 0 && order_number === null) {\n      // Solo usar este fallback si hay exactamente un pendiente\n      matchedRow = pending.length === 1 ? pending[0] : null;\n    }\n  }\n  \n  if (matchedRow) {\n    results.push({\n      json: {\n        tracking_number,\n        order_number: matchedRow.json.order_number,\n        order_id: matchedRow.json.order_id,\n        platform: matchedRow.json.platform,\n        customer_email: matchedRow.json.customer_email,\n        matched: true\n      }\n    });\n  } else {\n    // No se encontró match — loguear para revisión manual\n    results.push({\n      json: {\n        tracking_number,\n        order_number,\n        order_id: null,\n        platform: null,\n        customer_email: null,\n        matched: false,\n        error: `No se encontró pedido con order_number=${order_number} en el Sheet`\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "id": "4acbe5ac-af94-4cb6-8e7e-2df1620cd41a",
+      "name": "🔗 Cruzar Tracking con Pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "m1",
+              "leftValue": "={{ $json.matched }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adde5906-b752-49d5-a527-1d5f8c269360",
+      "name": "🚦 ¿Encontró el pedido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        16,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "id": "sw1",
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "tiendanube",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "TN"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "id": "sw2",
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "shopify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Shopify"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "id": "sw3",
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "woocommerce",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WooCommerce"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "b2b20477-2366-4a7e-b504-8bf73ab4b6fe",
+      "name": "🔀 Switch Plataforma",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        224,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.tiendanube.com/v1/TU_STORE_ID_TIENDANUBE/orders/{{ $json.order_id }}/fulfill",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authentication",
+              "value": "bearer TU_ACCESS_TOKEN_TIENDANUBE"
+            },
+            {
+              "name": "User-Agent",
+              "value": "N8N-AndreaniBot (tunegocio@gmail.com)"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"shipping_tracking_number\": \"{{ $json.tracking_number }}\", \"notify_customer\": false}",
+        "options": {}
+      },
+      "id": "51facef9-653e-4003-9237-1954cefb8e3e",
+      "name": "✅ Actualizar Tracking TN",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://TU-TIENDA.myshopify.com/admin/api/2024-01/orders/{{ $json.order_id }}/fulfillments.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "TU_ACCESS_TOKEN_SHOPIFY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"fulfillment\": {\"location_id\": TU_SHOPIFY_LOCATION_ID, \"tracking_number\": \"{{ $json.tracking_number }}\", \"tracking_company\": \"Andreani\", \"notify_customer\": false}}",
+        "options": {}
+      },
+      "id": "37242b84-12fd-4fc6-bbdf-7f4d5473351d",
+      "name": "✅ Actualizar Tracking Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://TU-TIENDA-WOOCOMMERCE.com/wp-json/wc/v3/orders/{{ $json.order_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"status\": \"completed\", \"meta_data\": [{\"key\": \"_tracking_number\", \"value\": \"{{ $json.tracking_number }}\"}, {\"key\": \"_tracking_provider\", \"value\": \"Andreani\"}]}",
+        "options": {}
+      },
+      "id": "79869815-7fea-4ca0-883e-b25f758f4c30",
+      "name": "✅ Actualizar Tracking WooCommerce",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        944
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6915be6a-d4a9-488f-9be3-893e8bb8d346",
+      "name": "🔀 Merge resultados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        656,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEETS_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_number": "={{ $('🔗 Cruzar Tracking con Pedido').item.json.order_number }}",
+            "tracking_number": "={{ $('🔗 Cruzar Tracking con Pedido').item.json.tracking_number }}",
+            "estado": "ENVIADO_CON_TRACKING"
+          }
+        },
+        "options": {}
+      },
+      "id": "22f6e999-22fb-46ee-80b5-f46704ae2152",
+      "name": "📊 Sheets: Actualizar Tracking",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        784
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "TU_EMAIL@gmail.com",
+        "toEmail": "={{ $('🔗 Cruzar Tracking con Pedido').item.json.customer_email }}",
+        "subject": "=✅ Tu pedido #{{ $('🔗 Cruzar Tracking con Pedido').item.json.order_number }} fue despachado con Andreani 🚚",
+        "options": {}
+      },
+      "id": "daa178ec-10ee-436e-b0c1-3929999822ee",
+      "name": "📧 Email Tracking al Cliente",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1072,
+        784
+      ],
+      "webhookId": "1133a636-e7b9-4cfb-957a-b25b81c462f5",
+      "credentials": {
+        "smtp": {
+          "id": "XDIna04p1ZdqIhRt",
+          "name": "SMTP account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEETS_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log_envios",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_id": "N/A",
+            "platform": "DESCONOCIDA",
+            "order_number": "={{ $json.order_number || 'DESCONOCIDO' }}",
+            "customer_email": "SIN_MATCH",
+            "tracking_number": "={{ $json.tracking_number }}",
+            "fecha_despacho": "={{ new Date().toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'}) }}",
+            "estado": "SIN_MATCH_EN_SHEET",
+            "error_detalle": "={{ $json.error }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "8caef788-277f-4ec8-84f1-02afa4cc32b9",
+      "name": "📊 Sheets: Loguear Sin Match",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        1072
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "fioiZPMkaSM62CQE",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"ok\", \"message\": \"PDF procesado. Revisá el Google Sheet para ver los resultados.\"}",
+        "options": {}
+      },
+      "id": "d857bb68-ba61-4aea-8af2-ae21bd81ec64",
+      "name": "📤 Responder al formulario",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1296,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://ytdheq-yu.myshopify.com/admin/api/2024-01/orders.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "financial_status",
+              "value": "paid"
+            },
+            {
+              "name": "fulfillment_status",
+              "value": "unfulfilled"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1280,
+        -64
+      ],
+      "id": "9722104d-f982-4127-a7d4-6629db9a3b2c",
+      "name": "HTTP Request",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "ngWFnAK6OUU93zdD",
+          "name": "Unnamed credential"
+        },
+        "httpHeaderAuth": {
+          "id": "P1jB2cPeLTPcRAbu",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-test.envia.com/ship/generate/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"origin\": {\n    \"name\": \"TU_NOMBRE_REMITENTE\",\n    \"company\": \"TU_EMPRESA\",\n    \"email\": \"test@tudominio.com\",\n    \"phone\": \"1122223333\",\n    \"street\": \"Avenida Rivadavia\",\n    \"number\": \"1000\",\n    \"district\": \"CABA\",\n    \"city\": \"CABA\",\n    \"state\": \"AR-C\",\n    \"category\": 1,\n    \"country\": \"AR\",\n    \"postalCode\": \"1001\"\n  },\n  \"destination\": {\n    \"name\": \"{{ $json.customer_name }}\",\n    \"company\": \"Particular\",\n    \"email\": \"{{ $json.customer_email }}\",\n    \"phone\": \"{{ $json.customer_phone }}\",\n    \"street\": \"{{ $json.shipping_street }}\",\n    \"number\": \"{{ $json.shipping_number }}\",\n    \"district\": \"{{ $json.shipping_city }}\",\n    \"city\": \"{{ $json.shipping_city }}\",\n    \"state\": \"{{ $json.shipping_province }}\",\n    \"category\": 1,\n    \"country\": \"AR\",\n    \"postalCode\": \"{{ $json.shipping_zipcode }}\"\n  },\n  \"packages\": [\n    {\n      \"content\": \"Pedido #{{ $json.order_number }}\",\n      \"amount\": 1,\n      \"type\": \"box\",\n      \"weight\": 1,\n      \"weightUnit\": \"kg\",\n      \"lengthUnit\": \"cm\",\n      \"dimensions\": {\n        \"length\": 30,\n        \"width\": 20,\n        \"height\": 15\n      }\n    }\n  ],\n  \"shipment\": {\n    \"carrier\": \"andreani\",\n    \"service\": \"estandar\",\n    \"type\": 1\n  },\n  \"settings\": {\n    \"printFormat\": \"PDF\",\n    \"printSize\": \"PAPER_4X6\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        -128
+      ],
+      "id": "22db36b4-4768-4cf3-8b41-c1998c4b4112",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "P1jB2cPeLTPcRAbu",
+          "name": "Header Auth account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⏰ Trigger 7AM (Lun–Sáb)": {
+      "main": [
+        [
+          {
+            "node": "📦 GET Pedidos Tienda Nube",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🛒 GET Pedidos WooCommerce",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 GET Pedidos Tienda Nube": {
+      "main": [
+        [
+          {
+            "node": "🏷️ Etiquetar TN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🛒 GET Pedidos WooCommerce": {
+      "main": [
+        [
+          {
+            "node": "🏷️ Etiquetar WooCommerce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiquetar TN": {
+      "main": [
+        []
+      ]
+    },
+    "🏷️ Etiquetar Shopify": {
+      "main": [
+        [
+          {
+            "node": "🔀 Merge 3 Plataformas",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔀 Merge 3 Plataformas": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Normalizar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Normalizar Datos": {
+      "main": [
+        [
+          {
+            "node": "📊 Sheets: Leer IDs Procesados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sheets: Leer IDs Procesados": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrar Duplicados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrar Duplicados": {
+      "main": [
+        [
+          {
+            "node": "🚦 ¿Hay pedidos nuevos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚦 ¿Hay pedidos nuevos?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✋ Sin Pedidos Nuevos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔐 Login Andreani": {
+      "main": [
+        []
+      ]
+    },
+    "📬 Crear Envío Andreani": {
+      "main": [
+        [
+          {
+            "node": "⏳ Esperar 3s (rate limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏳ Esperar 3s (rate limit)": {
+      "main": [
+        [
+          {
+            "node": "✅ ¿Andreani OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ ¿Andreani OK?": {
+      "main": [
+        [
+          {
+            "node": "📝 Preparar Datos Éxito",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Preparar Datos Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Preparar Datos Éxito": {
+      "main": [
+        [
+          {
+            "node": "📊 Sheets: Registrar Éxito",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Preparar Datos Error": {
+      "main": [
+        [
+          {
+            "node": "📊 Sheets: Registrar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sheets: Registrar Error": {
+      "main": [
+        [
+          {
+            "node": "📧 Notificar Error al Dueño",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Webhook: Recibir PDF": {
+      "main": [
+        [
+          {
+            "node": "🔍 Validar PDF recibido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Validar PDF recibido": {
+      "main": [
+        [
+          {
+            "node": "📖 Extraer texto del PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Extraer texto del PDF": {
+      "main": [
+        [
+          {
+            "node": "🔢 Parsear Trackings del PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔢 Parsear Trackings del PDF": {
+      "main": [
+        [
+          {
+            "node": "📊 Sheets: Buscar Pedido por N°",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sheets: Buscar Pedido por N°": {
+      "main": [
+        [
+          {
+            "node": "🔗 Cruzar Tracking con Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Cruzar Tracking con Pedido": {
+      "main": [
+        [
+          {
+            "node": "🚦 ¿Encontró el pedido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚦 ¿Encontró el pedido?": {
+      "main": [
+        [
+          {
+            "node": "🔀 Switch Plataforma",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📊 Sheets: Loguear Sin Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Switch Plataforma": {
+      "main": [
+        [
+          {
+            "node": "✅ Actualizar Tracking TN",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✅ Actualizar Tracking Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✅ Actualizar Tracking WooCommerce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Actualizar Tracking TN": {
+      "main": [
+        [
+          {
+            "node": "🔀 Merge resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Actualizar Tracking Shopify": {
+      "main": [
+        [
+          {
+            "node": "🔀 Merge resultados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔀 Merge resultados": {
+      "main": [
+        [
+          {
+            "node": "📊 Sheets: Actualizar Tracking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Sheets: Actualizar Tracking": {
+      "main": [
+        [
+          {
+            "node": "📧 Email Tracking al Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Email Tracking al Cliente": {
+      "main": [
+        [
+          {
+            "node": "📤 Responder al formulario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏷️ Etiquetar WooCommerce": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "🏷️ Etiquetar Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "📬 Crear Envío Andreani",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e8d9a065-2102-4e3a-bf7f-4e5881acafab",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9075fbafdabd143c2e06a920b12119013f7dfebca02c8861781fa109e759a9fa"
+  },
+  "id": "o84qUdyXlwb9h5PT",
+  "tags": []
+}
