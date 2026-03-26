@@ -1,4 +1,25 @@
 # n8n-automatizaciones
+
+Flujo 1 — Analizador automático de CVs con IA
+¿Qué hace?
+Sistema de preselección de candidatos que recibe CVs en PDF, los analiza con IA y carga automáticamente una puntuación y opinión de cada candidato en un Google Sheet — sin que ningún humano tenga que leer el CV primero.
+Cómo funciona por dentro:
+
+Un formulario web recibe el CV del candidato en PDF
+Extrae el texto del PDF y lo procesa en paralelo con dos agentes de IA: uno extrae los datos personales (nombre, email, teléfono, dirección) y el otro extrae formación académica, historial laboral y habilidades
+Combina los resultados de ambos agentes y genera un resumen profesional del candidato de máximo 100 palabras, escrito desde la perspectiva de un reclutador senior
+Con ese resumen, un LLM evalúa al candidato contra el perfil buscado y devuelve una puntuación del 1 al 10 con una justificación detallada en formato JSON estructurado
+Todo se guarda automáticamente en un Google Sheet con nombre, contacto, habilidades, experiencia, estudios, puntuación y opinión del agente
+
+Stack:
+
+n8n
+OpenAI GPT-4o-mini (extracción de información + resumen + evaluación)
+n8n Form Trigger (formulario de carga de CV)
+Extracción de texto desde PDF
+Google Sheets (base de datos de candidatos)
+Structured Output Parser (respuesta JSON tipada)
+
 #Flujo 2 — Agente de atención al cliente para Instagram
 ¿Qué hace?
 Automatización completa que recibe mensajes y comentarios de Instagram en tiempo real, los analiza con IA y responde automáticamente según el tipo de mensaje — sin intervención humana.
