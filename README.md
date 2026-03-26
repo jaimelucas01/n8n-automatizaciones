@@ -18,6 +18,8 @@ Sistema de preselección de candidatos que recibe CVs en PDF, los analiza con IA
 
 **Stack:** `n8n` `OpenAI GPT-4o-mini` `Google Sheets` `PDF Extraction` `Structured Output Parser`
 
+<img width="1381" height="615" alt="Analizador-de-CV- n8n" src="https://github.com/user-attachments/assets/0adf5f79-fb49-417f-8e4a-38793e6bf0ad" />
+
 ---
 
 ## Flujo 2 — Agente de atención al cliente para Instagram
@@ -35,6 +37,8 @@ Automatización completa que recibe mensajes y comentarios de Instagram en tiemp
 - La respuesta final se envía al usuario vía la API de Meta
 
 **Stack:** `n8n` `OpenAI GPT-4o-mini` `Meta Graph API` `Webhooks` `SMTP` `JavaScript`
+
+<img width="1563" height="704" alt="Automatización-IG" src="https://github.com/user-attachments/assets/0cd72872-020f-415b-aaf4-522f217ec196" />
 
 ---
 
@@ -61,6 +65,9 @@ Sistema completo que cada mañana busca los pedidos pagados en Shopify, genera l
 - Manda un email automático al cliente avisando el despacho
 
 **Stack:** `n8n` `Shopify API` `Andreani API` `Google Sheets` `SMTP` `JavaScript` `CRON` `Webhooks`
+
+<img width="1550" height="720" alt="Envios-automaticos-Ecommerce" src="https://github.com/user-attachments/assets/ff75a788-5d5c-4606-b657-f01198a70c33" />
+
 
 ---
 
