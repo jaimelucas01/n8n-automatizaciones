@@ -1,5 +1,5 @@
 # n8n-automatizaciones
-Flujo 2 — Agente de atención al cliente para Instagram
+#Flujo 2 — Agente de atención al cliente para Instagram
 ¿Qué hace?
 Automatización completa que recibe mensajes y comentarios de Instagram en tiempo real, los analiza con IA y responde automáticamente según el tipo de mensaje — sin intervención humana.
 Cómo funciona por dentro:
@@ -21,3 +21,37 @@ Meta Graph API (Instagram)
 Webhook
 SMTP / Email
 JavaScript (nodos de código personalizados)
+
+#Flujo 3 — Automatización de envíos con Andreani para e-commerce
+¿Qué hace?
+Sistema completo que todos los días a las 7AM busca automáticamente los pedidos pagados en Shopify (compatible también con Tienda Nube y WooCommerce), genera las órdenes de envío en Andreani, y cuando llega el PDF de etiquetas lo procesa para extraer los números de tracking y notificar a cada cliente.
+Cómo funciona por dentro:
+El flujo tiene dos partes:
+Parte 1 — Carga automática de envíos (se ejecuta cada mañana):
+
+Un trigger CRON dispara el flujo de lunes a sábado a las 7AM
+Consulta la API de Shopify para traer todos los pedidos pagados y sin despachar
+Normaliza los datos de dirección al formato que requiere Andreani (incluyendo conversión de provincias a códigos ISO)
+Compara contra un Google Sheet para filtrar pedidos que ya fueron procesados y evitar duplicados
+Por cada pedido nuevo genera la orden de envío en la API de Andreani, con un wait de 3 segundos entre cada llamada para respetar el rate limit
+Si el envío se crea bien lo registra en el Sheet. Si falla, manda un email de alerta con el detalle del error para cargarlo manualmente
+
+Parte 2 — Procesamiento del PDF de etiquetas:
+
+Un webhook recibe el PDF de etiquetas que genera Andreani
+Extrae el texto del PDF y parsea los números de tracking con regex
+Cruza cada tracking con el pedido correspondiente en el Google Sheet
+Actualiza el estado del pedido en Shopify con el número de tracking
+Manda un email automático al cliente avisando que su pedido fue despachado
+Registra todo en el Sheet con el estado final
+
+Stack:
+
+n8n
+Shopify API / Tienda Nube API / WooCommerce API
+Andreani API
+Google Sheets (como base de datos de log)
+SMTP / Email
+JavaScript (normalización de datos, regex para parseo de PDF, manejo de rate limits)
+CRON scheduling
+Webhooks
